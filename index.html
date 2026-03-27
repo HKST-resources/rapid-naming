@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>快速命名遊戲2</title>
+    <title>快速命名遊戲</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -468,7 +468,9 @@
         }
 
         function renderGame(app) {
-            const round = state.rounds[state.currentRound];
+            // Bug Fix: Clamp the index so it doesn't crash during the celebration phase
+            const roundIdx = Math.min(state.currentRound, 9);
+            const round = state.rounds[roundIdx];
             const cardWidthPercent = (100 / state.cardsPerRound) - 2;
 
             app.innerHTML = `
@@ -477,6 +479,7 @@
                         <div class="reward-track-box flex gap-2">
                             ${Array.from({length: 10}).map((_, i) => {
                                 let status = i < state.currentRound ? (state.rounds[i].success ? 'earned' : 'failed') : '';
+                                if(state.isFinishing && i === 9) status = state.rounds[9].success ? 'earned' : 'failed';
                                 return `<div class="reward-slot ${status}">${status ? state.rewardEmoji : ''}</div>`;
                             }).join('')}
                         </div>
@@ -504,7 +507,7 @@
                     </div>
 
                     <div class="w-full flex justify-between items-center px-10 pb-4">
-                        <div class="text-2xl font-black text-white bg-black/30 px-6 py-2 rounded-full">ROUND ${state.currentRound + 1} / 10</div>
+                        <div class="text-2xl font-black text-white bg-black/30 px-6 py-2 rounded-full">ROUND ${Math.min(state.currentRound + 1, 10)} / 10</div>
                         <button onclick="endRound(false)" class="px-10 py-3 btn-orange btn-active rounded-full font-black text-2xl shadow-lg">下一關 ➔</button>
                     </div>
                 </div>
@@ -630,31 +633,31 @@
             state.rounds[state.currentRound].success = success;
             if(!success) sounds.ding.play();
             
-            // Bug 2: Check for 10th round immediately
-            setTimeout(() => {
-                if(state.currentRound < 9) {
+            if(state.currentRound < 9) {
+                setTimeout(() => {
                     state.currentRound++;
                     startRound();
-                } else {
-                    finishGameSequence();
-                }
-            }, 600);
+                }, 600);
+            } else {
+                // Trigger finish immediately for the 10th round
+                finishGameSequence();
+            }
         }
 
         function finishGameSequence() {
             state.isFinishing = true;
-            state.currentRound = 10; // To show 10/10 slots filled
             updateView(); 
             
-            // Bug 2: Confetti and Sound trigger
+            // Trigger celebration
             sounds.finish.play();
             confetti({
-                particleCount: 150,
-                spread: 70,
+                particleCount: 200,
+                spread: 80,
                 origin: { y: 0.6 },
                 zIndex: 200
             });
             
+            // Bug Fix: Clear logic and move to summary after 3 seconds
             setTimeout(() => {
                 state.view = 'SUMMARY';
                 updateView();
