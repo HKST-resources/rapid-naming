@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>快速命名遊戲</title>
+    <title>快速命名遊戲2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
             --blue-main: #0EA5E9;
@@ -26,14 +27,12 @@
         .btn-emerald { background-color: #059669; border-bottom: 5px solid #064e3b; color: white; }
         .btn-active:active { transform: translateY(2px); border-bottom-width: 2px; }
 
-        /* Card Styles */
         .vocab-card { background: white; padding: 10px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; transition: 0.2s; }
         .selected-card { outline: 6px solid #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
         
         .star-badge { position: absolute; top: -10px; right: -10px; font-size: 30px; cursor: pointer; filter: grayscale(1); opacity: 0.5; transition: 0.3s; z-index: 10; }
         .star-badge.active { filter: grayscale(0); opacity: 1; transform: scale(1.2); }
 
-        /* Game Stage Logic */
         .game-card { cursor: pointer; border: 8px solid transparent; border-radius: 24px; transition: 0.2s; background: white; max-width: 300px; }
         .game-card.ticked { border-color: #22c55e; background: #f0fdf4; transform: scale(0.95); }
         .tick-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; display: none; pointer-events: none; z-index: 20; }
@@ -44,19 +43,15 @@
         .reward-slot.earned { background: white; border-style: solid; border-color: #fbbf24; box-shadow: 0 3px 0 #d97706; }
         .reward-slot.failed { background: #e2e8f0; filter: grayscale(1); border-style: solid; border-color: #94a3b8; opacity: 0.6; }
 
-        /* Timer UI */
         .timer-container { width: 100%; max-width: 600px; position: relative; padding: 30px 0; }
         .timer-track { height: 30px; width: 100%; border-radius: 999px; border: 5px solid white; background: rgba(0,0,0,0.1); }
         .timer-fill { height: 100%; border-radius: 999px; transition: width 0.1s linear; }
         .mover-emoji { position: absolute; top: -35px; font-size: 75px; z-index: 30; transform: translateX(-50%); transition: left 0.1s linear; }
 
-        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 200; }
         .hide-text p { display: none !important; }
     </style>
 </head>
 <body class="bg-park">
-
-    <canvas id="confetti-canvas"></canvas>
 
     <nav class="fixed top-0 left-0 w-full h-14 bg-white shadow-sm z-[100] flex items-center justify-between px-4">
         <button onclick="location.reload()" class="px-5 py-1 rounded-xl font-bold btn-blue btn-active">快速命名</button>
@@ -375,11 +370,14 @@
             app.innerHTML = `
                 <div class="max-w-6xl mx-auto">
                     <div class="sticky top-14 z-40 bg-white/95 p-4 rounded-2xl mb-6 shadow-md flex justify-between items-center border border-gray-200">
-                        <span class="font-bold text-gray-600 text-lg">選擇詞彙：</span>
                         <div class="flex gap-4">
+                            <select onchange="document.getElementById('section-'+this.value).scrollIntoView({behavior: 'smooth'})" class="p-2 border-2 border-gray-200 rounded-xl font-bold bg-white">
+                                <option>跳至類別...</option>
+                                ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+                            </select>
                             <input type="text" placeholder="🔍 搜尋..." class="p-2 border-2 border-gray-200 rounded-xl w-64" oninput="filterGrid(this.value)">
-                            <button id="nextBtn" onclick="state.view='PREP';updateView()" class="px-12 py-3 btn-orange btn-active rounded-full font-black text-xl">下一步 (${state.selectedItems.length})</button>
                         </div>
+                        <button id="nextBtn" onclick="state.view='PREP';updateView()" class="px-12 py-3 btn-orange btn-active rounded-full font-black text-xl">下一步 (${state.selectedItems.length})</button>
                     </div>
                     <div id="selection-grid-container"></div>
                 </div>
@@ -394,13 +392,15 @@
                 const items = vocabList.filter(v => v.cat === cat && v.name.includes(term));
                 if (items.length === 0) return;
                 html += `
-                <div class="mb-8"><div class="bg-orange-600 text-white px-6 py-2 rounded-t-xl font-black">${cat}</div>
-                <div class="bg-white/40 p-5 rounded-b-xl flex flex-wrap gap-4 border-x border-b border-orange-200">
-                    ${items.map(v => {
-                        const active = state.selectedItems.some(i => i.id === v.id) ? 'selected-card' : '';
-                        return `<div id="card-${v.id}" onclick="toggleItem('${v.id}')" class="vocab-card cursor-pointer ${active}" style="width:var(--card-width)"><img src="${v.path}" class="w-full pointer-events-none"><p>${v.name}</p></div>`;
-                    }).join('')}
-                </div></div>`;
+                <div id="section-${cat}" class="mb-8">
+                    <div class="bg-orange-600 text-white px-6 py-2 rounded-t-xl font-black">${cat}</div>
+                    <div class="bg-white/40 p-5 rounded-b-xl flex flex-wrap gap-4 border-x border-b border-orange-200">
+                        ${items.map(v => {
+                            const active = state.selectedItems.some(i => i.id === v.id) ? 'selected-card' : '';
+                            return `<div id="card-${v.id}" onclick="toggleItem('${v.id}')" class="vocab-card cursor-pointer ${active}" style="width:var(--card-width)"><img src="${v.path}" class="w-full pointer-events-none"><p>${v.name}</p></div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
             });
             container.innerHTML = html;
         }
@@ -469,7 +469,6 @@
 
         function renderGame(app) {
             const round = state.rounds[state.currentRound];
-            // Calculate width for single line: (Total container width - gap space) / count
             const cardWidthPercent = (100 / state.cardsPerRound) - 2;
 
             app.innerHTML = `
@@ -631,24 +630,35 @@
             state.rounds[state.currentRound].success = success;
             if(!success) sounds.ding.play();
             
+            // Bug 2: Check for 10th round immediately
             setTimeout(() => {
-                state.currentRound++;
-                if(state.currentRound < 10) startRound();
-                else finishGameSequence();
+                if(state.currentRound < 9) {
+                    state.currentRound++;
+                    startRound();
+                } else {
+                    finishGameSequence();
+                }
             }, 600);
         }
 
         function finishGameSequence() {
             state.isFinishing = true;
-            updateView(); // Show final 10/10 state
-            sounds.finish.play();
-            triggerConfetti();
+            state.currentRound = 10; // To show 10/10 slots filled
+            updateView(); 
             
-            // Stay on game stage for celebration, then go to summary
+            // Bug 2: Confetti and Sound trigger
+            sounds.finish.play();
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                zIndex: 200
+            });
+            
             setTimeout(() => {
                 state.view = 'SUMMARY';
                 updateView();
-            }, 3500);
+            }, 3000);
         }
 
         function updateTimerUI() {
@@ -658,29 +668,6 @@
             txt.innerText = Math.ceil(state.timeLeft) + "s";
             if(state.timerType === 'bomb') { fill.style.width = p + "%"; mover.style.left = p + "%"; }
             else { fill.style.width = (100-p) + "%"; mover.style.left = (100-p) + "%"; }
-        }
-
-        function triggerConfetti() {
-            const canvas = document.getElementById('confetti-canvas'), ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            let pieces = Array.from({length: 80}, () => ({
-                x: Math.random() * canvas.width, y: -20, 
-                w: 10 + Math.random() * 15, h: 5 + Math.random() * 10,
-                color: `hsl(${Math.random() * 360}, 80%, 50%)`,
-                v: 3 + Math.random() * 4, r: Math.random() * Math.PI, rs: Math.random() * 0.1
-            }));
-            function draw() {
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                pieces.forEach(p => {
-                    ctx.save();
-                    ctx.translate(p.x, p.y); ctx.rotate(p.r);
-                    ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-                    ctx.restore();
-                    p.y += p.v; p.r += p.rs;
-                });
-                if(pieces[0].y < canvas.height + 100) requestAnimationFrame(draw);
-            }
-            draw();
         }
 
         function handleSizeChange(val) { document.documentElement.style.setProperty('--card-width', val + 'px'); }
