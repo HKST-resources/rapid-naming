@@ -15,7 +15,6 @@
         }
         body { font-family: "PingFang HK", "Heiti TC", sans-serif; overflow-x: hidden; user-select: none; transition: background 0.3s; }
         
-        /* Backgrounds */
         .bg-park { background: url('images/park.jpg') center/cover fixed; }
         .bg-room { background: url('images/room.jpg') center/cover fixed; }
         .bg-road { background: url('images/road.jpg') center/cover fixed; }
@@ -28,35 +27,31 @@
         .btn-active:active { transform: translateY(2px); border-bottom-width: 2px; }
 
         /* Card Styles */
-        .vocab-card { width: var(--card-width); background: white; padding: 10px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; transition: 0.2s; }
+        .vocab-card { background: white; padding: 10px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; transition: 0.2s; }
         .selected-card { outline: 6px solid #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
         
         .star-badge { position: absolute; top: -10px; right: -10px; font-size: 30px; cursor: pointer; filter: grayscale(1); opacity: 0.5; transition: 0.3s; z-index: 10; }
         .star-badge.active { filter: grayscale(0); opacity: 1; transform: scale(1.2); }
 
-        /* Game Stage Ticking */
-        .game-card { cursor: pointer; border: 8px solid transparent; border-radius: 24px; transition: 0.2s; background: white; }
+        /* Game Stage Logic */
+        .game-card { cursor: pointer; border: 8px solid transparent; border-radius: 24px; transition: 0.2s; background: white; max-width: 300px; }
         .game-card.ticked { border-color: #22c55e; background: #f0fdf4; transform: scale(0.95); }
         .tick-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; display: none; pointer-events: none; z-index: 20; }
         .game-card.ticked .tick-overlay { display: block; }
 
-        /* Reward Track Styles */
-        .reward-track-box { background: rgba(255,255,255,0.8); border: 4px solid #bae6fd; padding: 15px; border-radius: 30px; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-        .reward-slot { width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; font-size: 45px; border-radius: 18px; background: rgba(0,0,0,0.05); border: 3px dashed #cbd5e1; }
-        .reward-slot.earned { background: white; border-style: solid; border-color: #fbbf24; box-shadow: 0 4px 0 #d97706; }
+        .reward-track-box { background: rgba(255,255,255,0.85); border: 4px solid #bae6fd; padding: 12px; border-radius: 25px; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .reward-slot { width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 38px; border-radius: 15px; background: rgba(0,0,0,0.05); border: 2px dashed #cbd5e1; }
+        .reward-slot.earned { background: white; border-style: solid; border-color: #fbbf24; box-shadow: 0 3px 0 #d97706; }
         .reward-slot.failed { background: #e2e8f0; filter: grayscale(1); border-style: solid; border-color: #94a3b8; opacity: 0.6; }
 
         /* Timer UI */
-        .timer-container { width: 100%; max-width: 700px; position: relative; padding: 35px 0; }
-        .timer-track { height: 40px; width: 100%; border-radius: 999px; position: relative; border: 6px solid white; background: rgba(0,0,0,0.1); }
+        .timer-container { width: 100%; max-width: 600px; position: relative; padding: 30px 0; }
+        .timer-track { height: 30px; width: 100%; border-radius: 999px; border: 5px solid white; background: rgba(0,0,0,0.1); }
         .timer-fill { height: 100%; border-radius: 999px; transition: width 0.1s linear; }
-        .mover-emoji { position: absolute; top: -40px; font-size: 85px; z-index: 30; transform: translateX(-50%); transition: left 0.1s linear; }
+        .mover-emoji { position: absolute; top: -35px; font-size: 75px; z-index: 30; transform: translateX(-50%); transition: left 0.1s linear; }
 
-        /* Confetti */
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 200; }
-        
         .hide-text p { display: none !important; }
-        .category-section { scroll-margin-top: 180px; }
     </style>
 </head>
 <body class="bg-park">
@@ -69,11 +64,7 @@
             <div class="flex items-center gap-2"><span>大小</span><input type="range" id="sizeSlider" min="80" max="220" value="110" oninput="handleSizeChange(this.value)"></div>
             <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="textToggle" checked onchange="updateView()"> 顯示文字</label>
             <select onchange="document.body.className = 'bg-' + this.value" class="border rounded-md px-2 py-1 bg-gray-50">
-                <option value="park">草地</option>
-                <option value="room">房間</option>
-                <option value="road">馬路</option>
-                <option value="game">遊戲</option>
-                <option value="white">純白</option>
+                <option value="park">草地</option><option value="room">房間</option><option value="road">馬路</option><option value="game">遊戲</option><option value="white">純白</option>
             </select>
             <button onclick="exportResult()" class="px-4 py-1 bg-emerald-600 text-white rounded-md font-bold btn-active">匯出 💾</button>
         </div>
@@ -359,7 +350,8 @@
             currentRound: 0,
             rounds: [], 
             isPaused: false,
-            timeLeft: 0
+            timeLeft: 0,
+            isFinishing: false
         };
 
         const sounds = { 
@@ -379,21 +371,14 @@
             else if (state.view === 'SUMMARY') renderSummary(app);
         }
 
-        // --- Selection ---
         function renderSelection(app) {
             app.innerHTML = `
                 <div class="max-w-6xl mx-auto">
-                    <div class="sticky top-14 z-40 bg-white/95 p-4 rounded-2xl mb-6 shadow-md flex flex-col gap-4 border border-gray-200">
-                        <div class="flex gap-4 items-center">
-                            <span class="font-bold text-gray-600 text-lg">選擇詞彙：</span>
-                            <div class="flex-1"></div>
-                            <button id="nextBtn" onclick="state.view='PREP';updateView()" class="px-12 py-3 btn-orange btn-active rounded-full font-black text-xl">下一步 (${state.selectedItems.length})</button>
-                        </div>
+                    <div class="sticky top-14 z-40 bg-white/95 p-4 rounded-2xl mb-6 shadow-md flex justify-between items-center border border-gray-200">
+                        <span class="font-bold text-gray-600 text-lg">選擇詞彙：</span>
                         <div class="flex gap-4">
-                            <select onchange="document.getElementById('section-'+this.value).scrollIntoView({behavior: 'smooth'})" class="p-2 border-2 border-gray-200 rounded-xl font-bold bg-white">
-                                <option>跳至類別...</option>${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
-                            </select>
                             <input type="text" placeholder="🔍 搜尋..." class="p-2 border-2 border-gray-200 rounded-xl w-64" oninput="filterGrid(this.value)">
+                            <button id="nextBtn" onclick="state.view='PREP';updateView()" class="px-12 py-3 btn-orange btn-active rounded-full font-black text-xl">下一步 (${state.selectedItems.length})</button>
                         </div>
                     </div>
                     <div id="selection-grid-container"></div>
@@ -409,32 +394,26 @@
                 const items = vocabList.filter(v => v.cat === cat && v.name.includes(term));
                 if (items.length === 0) return;
                 html += `
-                <div id="section-${cat}" class="mb-8 category-section">
-                    <div class="bg-orange-600 text-white px-6 py-2 rounded-t-xl flex justify-between items-center shadow-md">
-                        <span class="text-xl font-black">${cat}</span>
-                        <button onclick="selectAllInCat('${cat}')" class="text-sm bg-white/20 px-4 py-1 rounded-full font-bold">全選</button>
-                    </div>
-                    <div class="bg-white/40 p-5 rounded-b-xl flex flex-wrap gap-4 border-x border-b border-orange-200">
-                        ${items.map(v => {
-                            const active = state.selectedItems.some(i => i.id === v.id) ? 'selected-card' : '';
-                            return `<div id="card-${v.id}" onclick="toggleItem('${v.id}')" class="vocab-card cursor-pointer ${active}"><img src="${v.path}" class="w-full pointer-events-none"><p>${v.name}</p></div>`;
-                        }).join('')}
-                    </div>
-                </div>`;
+                <div class="mb-8"><div class="bg-orange-600 text-white px-6 py-2 rounded-t-xl font-black">${cat}</div>
+                <div class="bg-white/40 p-5 rounded-b-xl flex flex-wrap gap-4 border-x border-b border-orange-200">
+                    ${items.map(v => {
+                        const active = state.selectedItems.some(i => i.id === v.id) ? 'selected-card' : '';
+                        return `<div id="card-${v.id}" onclick="toggleItem('${v.id}')" class="vocab-card cursor-pointer ${active}" style="width:var(--card-width)"><img src="${v.path}" class="w-full pointer-events-none"><p>${v.name}</p></div>`;
+                    }).join('')}
+                </div></div>`;
             });
             container.innerHTML = html;
         }
 
-        // --- Preparation ---
         function renderPrep(app) {
             app.innerHTML = `
                 <div class="max-w-5xl mx-auto flex flex-col items-center gap-8">
-                    <button onclick="state.view='SELECT';updateView()" class="self-start px-8 py-2 btn-blue btn-active rounded-xl font-bold">← 返回修改</button>
+                    <button onclick="state.view='SELECT';updateView()" class="self-start px-8 py-2 btn-blue btn-active rounded-xl font-bold">← 返回</button>
                     <div class="bg-white border-8 border-sky-400 rounded-[40px] w-full p-10 shadow-2xl">
-                        <h2 class="text-4xl font-black text-sky-900 mb-6 text-center">設定出現頻率 (點擊⭐增加機率)</h2>
+                        <h2 class="text-3xl font-black text-sky-900 mb-6 text-center">設定高頻圖片 (點擊 ⭐)</h2>
                         <div class="flex flex-wrap gap-6 justify-center">
                             ${state.selectedItems.map(s => `
-                                <div class="vocab-card relative">
+                                <div class="vocab-card relative" style="width:140px">
                                     <div onclick="toggleStar('${s.id}')" class="star-badge ${state.starredIds.includes(s.id)?'active':''}">⭐</div>
                                     <img src="${s.path}" class="w-full">
                                     <p class="mt-2 font-bold">${s.name}</p>
@@ -442,150 +421,144 @@
                             `).join('')}
                         </div>
                     </div>
-                    <button onclick="state.view='SETUP';updateView()" class="px-24 py-6 btn-orange btn-active rounded-full font-black text-4xl shadow-2xl">遊戲設定 ⚙️</button>
+                    <button onclick="state.view='SETUP';updateView()" class="px-24 py-6 btn-orange btn-active rounded-full font-black text-4xl shadow-xl">遊戲設定 ⚙️</button>
                 </div>
             `;
         }
 
-        // --- Setup ---
         function renderSetup(app) {
+            const emojis = ['⭐','🏎️','🚂','🐰','🐶','🐱','🦸','🍎','🌸','❤️'];
             app.innerHTML = `
-                <div class="max-w-4xl mx-auto bg-white/95 p-12 rounded-[50px] shadow-2xl border-8 border-orange-100 flex flex-col gap-10">
+                <div class="max-w-4xl mx-auto bg-white/95 p-12 rounded-[50px] shadow-2xl border-8 border-orange-100 flex flex-col gap-8">
                     <h2 class="text-5xl font-black text-orange-600 text-center">遊戲設定</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div class="flex flex-col gap-4">
-                            <label class="text-2xl font-black text-gray-700">每輪顯示張數</label>
-                            <div class="flex gap-2">
-                                ${[1,2,3,4,5].map(n => `<button onclick="state.cardsPerRound=${n};updateView()" class="w-14 h-14 rounded-full font-bold text-xl ${state.cardsPerRound===n?'btn-orange':'bg-gray-200'}">${n}</button>`).join('')}
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label class="text-xl font-black block mb-2">每輪張數</label>
+                            <div class="flex gap-2">${[1,2,3,4,5].map(n => `<button onclick="state.cardsPerRound=${n};updateView()" class="w-12 h-12 rounded-full font-bold ${state.cardsPerRound===n?'btn-orange':'bg-gray-200'}">${n}</button>`).join('')}</div>
                         </div>
-                        <div class="flex flex-col gap-4">
-                            <label class="text-2xl font-black text-gray-700">計時器</label>
-                            <div class="flex gap-4">
-                                <button onclick="state.showTimer=true;updateView()" class="flex-1 py-3 rounded-2xl font-bold ${state.showTimer?'btn-blue':'bg-gray-200'}">開啟</button>
-                                <button onclick="state.showTimer=false;updateView()" class="flex-1 py-3 rounded-2xl font-bold ${!state.showTimer?'btn-blue':'bg-gray-200'}">關閉</button>
+                        <div>
+                            <label class="text-xl font-black block mb-2">計時器</label>
+                            <div class="flex gap-2">
+                                <button onclick="state.showTimer=true;updateView()" class="flex-1 py-2 rounded-xl font-bold ${state.showTimer?'btn-blue':'bg-gray-200'}">開啟</button>
+                                <button onclick="state.showTimer=false;updateView()" class="flex-1 py-2 rounded-xl font-bold ${!state.showTimer?'btn-blue':'bg-gray-200'}">關閉</button>
                             </div>
                         </div>
                         ${state.showTimer ? `
-                        <div class="flex flex-col gap-4">
-                            <label class="text-2xl font-black text-gray-700">限時 (秒)</label>
-                            <div class="flex flex-wrap gap-2">
-                                ${[3,5,7,10,15,20].map(s => `<button onclick="state.duration=${s};updateView()" class="w-16 py-2 rounded-xl font-bold ${state.duration===s?'btn-orange':'bg-gray-100'}">${s}s</button>`).join('')}
-                            </div>
+                        <div>
+                            <label class="text-xl font-black block mb-2">限時 (秒)</label>
+                            <div class="flex flex-wrap gap-2">${[3,5,7,10,15,20].map(s => `<button onclick="state.duration=${s};updateView()" class="px-4 py-2 rounded-xl font-bold ${state.duration===s?'btn-orange':'bg-gray-100'}">${s}s</button>`).join('')}</div>
                         </div>
-                        <div class="flex flex-col gap-4">
-                            <label class="text-2xl font-black text-gray-700">計時樣式</label>
-                            <div class="flex gap-4">
-                                <button onclick="state.timerType='car';updateView()" class="flex-1 text-5xl p-2 rounded-xl transition ${state.timerType==='car'?'bg-sky-100 border-4 border-sky-400':'bg-gray-50'}">🏎️</button>
-                                <button onclick="state.timerType='bomb';updateView()" class="flex-1 text-5xl p-2 rounded-xl transition ${state.timerType==='bomb'?'bg-orange-100 border-4 border-orange-400':'bg-gray-50'}">💣</button>
+                        <div>
+                            <label class="text-xl font-black block mb-2">計時樣式</label>
+                            <div class="flex gap-2">
+                                <button onclick="state.timerType='car';updateView()" class="flex-1 text-4xl p-2 rounded-xl ${state.timerType==='car'?'bg-sky-100 border-4 border-sky-400':'bg-gray-50'}">🏎️</button>
+                                <button onclick="state.timerType='bomb';updateView()" class="flex-1 text-4xl p-2 rounded-xl ${state.timerType==='bomb'?'bg-orange-100 border-4 border-orange-400':'bg-gray-50'}">💣</button>
                             </div>
                         </div>` : ''}
-                        <div class="col-span-full flex flex-col gap-4">
-                            <label class="text-2xl font-black text-gray-700 text-center">完成獎勵</label>
+                        <div class="col-span-full">
+                            <label class="text-xl font-black block mb-4 text-center">完成獎勵</label>
                             <div class="grid grid-cols-5 gap-4 bg-gray-50 p-6 rounded-3xl">
-                                ${['⭐','🏎️','🚂','🐰','🐶','🐱','🦸','🍎','🌸','❤️'].map(e => `
-                                    <button onclick="state.rewardEmoji='${e}';updateView()" class="text-5xl p-3 rounded-2xl hover:bg-white transition ${state.rewardEmoji===e?'bg-white shadow-lg border-4 border-yellow-400':'' }">${e}</button>
-                                `).join('')}
+                                ${emojis.map(e => `<button onclick="state.rewardEmoji='${e}';updateView()" class="text-5xl p-2 rounded-2xl hover:bg-white transition ${state.rewardEmoji===e?'bg-white shadow-lg border-4 border-yellow-400':'' }">${e}</button>`).join('')}
                             </div>
                         </div>
                     </div>
-                    <button onclick="startGame()" class="px-24 py-8 btn-emerald btn-active rounded-full font-black text-5xl mt-4 shadow-xl">GO! 🚀</button>
+                    <button onclick="startGame()" class="px-24 py-6 btn-emerald btn-active rounded-full font-black text-5xl shadow-xl">GO! 🚀</button>
                 </div>
             `;
         }
 
-        // --- Game Stage ---
         function renderGame(app) {
             const round = state.rounds[state.currentRound];
+            // Calculate width for single line: (Total container width - gap space) / count
+            const cardWidthPercent = (100 / state.cardsPerRound) - 2;
+
             app.innerHTML = `
-                <div class="flex flex-col items-center gap-6 h-[85vh] justify-between">
-                    <div class="w-full max-w-5xl flex flex-col items-center gap-4">
-                        <div class="reward-track-box flex gap-3">
+                <div class="flex flex-col items-center gap-4 h-[85vh] justify-between relative">
+                    <div class="w-full flex flex-col items-center gap-2">
+                        <div class="reward-track-box flex gap-2">
                             ${Array.from({length: 10}).map((_, i) => {
                                 let status = i < state.currentRound ? (state.rounds[i].success ? 'earned' : 'failed') : '';
                                 return `<div class="reward-slot ${status}">${status ? state.rewardEmoji : ''}</div>`;
                             }).join('')}
                         </div>
                         ${state.showTimer ? `
-                        <div class="w-full flex justify-between items-center px-10">
-                            <span class="text-5xl font-black text-white drop-shadow-md" id="timerTxt">${state.timeLeft}s</span>
-                            <button onclick="state.isPaused = !state.isPaused; this.innerText=state.isPaused?'繼續 ▶️':'暫停 ⏸'" class="px-8 py-2 btn-blue btn-active rounded-full font-bold text-xl">暫停 ⏸</button>
+                        <div class="w-full max-w-2xl flex justify-between items-center px-4">
+                            <span class="text-4xl font-black text-white drop-shadow-md" id="timerTxt">${state.timeLeft}s</span>
+                            <button onclick="state.isPaused = !state.isPaused; this.innerText=state.isPaused?'繼續 ▶️':'暫停 ⏸'" class="px-6 py-1 btn-blue btn-active rounded-full font-bold">暫停 ⏸</button>
                         </div>
                         <div class="timer-container">
-                            <div class="endpoint-emoji" style="left:0%">${state.timerType==='bomb'?'🔥':''}</div>
-                            <div class="endpoint-emoji" style="left:100%">${state.timerType==='car'?'🏁':''}</div>
-                            <div class="timer-track">
-                                <div id="tFill" class="timer-fill ${state.timerType==='bomb'?'bg-orange-500':'bg-sky-500'}" style="width:100%"></div>
-                                <div id="tMover" class="mover-emoji" style="left:100%">${state.timerType==='bomb'?'💣':'🏎️'}</div>
-                            </div>
+                            <div class="timer-track"><div id="tFill" class="timer-fill ${state.timerType==='bomb'?'bg-orange-500':'bg-sky-500'}" style="width:100%"></div></div>
+                            <div id="tMover" class="mover-emoji" style="left:100%">${state.timerType==='bomb'?'💣':'🏎️'}</div>
                         </div>` : ''}
                     </div>
 
-                    <div class="flex flex-wrap justify-center gap-10 px-10">
+                    <div class="flex flex-row flex-nowrap justify-center items-center gap-4 w-full px-10">
                         ${round.displayedIds.map((id, index) => {
                             const item = vocabList.find(v => v.id === id);
                             const ticked = round.tickedIndexes.includes(index) ? 'ticked' : '';
                             return `
-                            <div onclick="tickCard(${index})" id="game-card-${index}" class="game-card relative vocab-card ${ticked}" style="width:260px">
+                            <div onclick="tickCard(${index})" id="game-card-${index}" class="game-card relative vocab-card ${ticked}" style="width:${cardWidthPercent}%">
                                 <img src="${item.path}" class="w-full pointer-events-none">
                                 <div class="tick-overlay">✅</div>
                             </div>`;
                         }).join('')}
                     </div>
 
-                    <div class="text-4xl font-black text-white drop-shadow-md bg-black/20 px-10 py-2 rounded-full mb-4">ROUND ${state.currentRound + 1} / 10</div>
+                    <div class="w-full flex justify-between items-center px-10 pb-4">
+                        <div class="text-2xl font-black text-white bg-black/30 px-6 py-2 rounded-full">ROUND ${state.currentRound + 1} / 10</div>
+                        <button onclick="endRound(false)" class="px-10 py-3 btn-orange btn-active rounded-full font-black text-2xl shadow-lg">下一關 ➔</button>
+                    </div>
                 </div>
             `;
             if (state.showTimer) updateTimerUI();
         }
 
-        // --- Summary ---
         function renderSummary(app) {
             const stats = state.selectedItems.map(item => {
                 let shown = 0, ticked = 0;
                 state.rounds.forEach(r => {
                     r.displayedIds.forEach((id, idx) => {
-                        if(id === item.id) {
-                            shown++;
-                            if(r.tickedIndexes.includes(idx)) ticked++;
-                        }
+                        if(id === item.id) { shown++; if(r.tickedIndexes.includes(idx)) ticked++; }
                     });
                 });
                 const rate = shown > 0 ? Math.round((ticked / shown) * 100) : 0;
                 return { ...item, shown, ticked, rate };
             });
 
-            const needsWork = stats.filter(s => s.rate < 50);
-            const doingGreat = stats.filter(s => s.rate >= 50);
-
             app.innerHTML = `
                 <div id="reportCard" class="bg-white p-12 rounded-[60px] shadow-2xl max-w-6xl mx-auto border-[15px] border-sky-50">
-                    <div class="flex justify-between items-center border-b-8 border-sky-50 pb-10 mb-10">
+                    <div class="flex justify-between items-center border-b-8 border-sky-50 pb-8 mb-8">
                         <div>
-                            <h2 class="text-6xl font-black text-sky-900">快速命名總結</h2>
-                            <p class="text-2xl font-bold text-gray-400 mt-4">模式：${state.showTimer ? state.duration + '秒限制' : '不限時'} | 成功：${state.rounds.filter(r => r.success).length} / 10</p>
+                            <h2 class="text-5xl font-black text-sky-900">快速命名總結</h2>
+                            <div class="reward-track-box flex gap-2 mt-4 scale-90 origin-left">
+                                ${state.rounds.map(r => `<div class="reward-slot ${r.success?'earned':'failed'}">${state.rewardEmoji}</div>`).join('')}
+                            </div>
                         </div>
-                        <div class="text-8xl">${state.rewardEmoji}</div>
+                        <div class="text-right">
+                             <div class="text-2xl font-bold text-gray-400">${state.showTimer ? state.duration + 's 限制' : '不限時'}</div>
+                             <div class="text-4xl font-black text-emerald-600">成功：${state.rounds.filter(r => r.success).length} / 10</div>
+                        </div>
                     </div>
                     
-                    ${needsWork.length > 0 ? renderStatSection("需多加練習 ⚠️", "bg-red-500", needsWork) : ''}
-                    ${renderStatSection("表現良好 ✨", "bg-emerald-500", doingGreat)}
+                    ${renderStatSection("需多加練習 ⚠️", "bg-red-500", stats.filter(s => s.rate < 50))}
+                    ${renderStatSection("表現良好 ✨", "bg-emerald-500", stats.filter(s => s.rate >= 50))}
                 </div>
-                <div class="flex justify-center mt-12 mb-20"><button onclick="location.reload()" class="px-20 py-6 btn-blue btn-active rounded-full font-black text-4xl shadow-xl">再玩一次</button></div>
+                <div class="flex justify-center mt-10 mb-20"><button onclick="location.reload()" class="px-20 py-5 btn-blue btn-active rounded-full font-black text-3xl shadow-xl">重新開始</button></div>
             `;
         }
 
         function renderStatSection(title, colorClass, data) {
+            if (data.length === 0) return '';
             return `
-                <div class="mb-12">
-                    <div class="${colorClass} text-white px-8 py-3 rounded-2xl text-3xl font-black mb-6 shadow-md inline-block">${title}</div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
+                <div class="mb-10">
+                    <div class="${colorClass} text-white px-6 py-2 rounded-xl text-2xl font-black mb-6 inline-block">${title}</div>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
                         ${data.map(item => `
                             <div class="vocab-card flex flex-col items-center">
                                 <img src="${item.path}" class="w-full rounded-xl">
-                                <p class="mt-3 font-bold text-lg">${item.name}</p>
-                                <div class="mt-2 text-sky-700 font-black text-xl">(${item.ticked}/${item.shown})</div>
-                                <div class="text-sm font-bold text-gray-400">${item.rate}% 成功率</div>
+                                <p class="mt-2 font-bold">${item.name}</p>
+                                <div class="mt-1 text-sky-700 font-black text-xl">(${item.ticked}/${item.shown})</div>
+                                <div class="text-xs font-bold text-gray-400">${item.rate}% 成功率</div>
                             </div>
                         `).join('')}
                     </div>
@@ -593,35 +566,26 @@
             `;
         }
 
-        // --- Logic ---
+        // --- Logic Engine ---
+
         function toggleItem(id) {
             const idx = state.selectedItems.findIndex(s => s.id === id);
-            const cardEl = document.getElementById(`card-${id}`);
-            if(idx > -1) { state.selectedItems.splice(idx, 1); cardEl?.classList.remove('selected-card'); }
-            else { state.selectedItems.push(vocabList.find(v => v.id === id)); cardEl?.classList.add('selected-card'); }
-            document.getElementById('nextBtn').innerText = `下一步 (${state.selectedItems.length})`;
-        }
-
-        function selectAllInCat(cat) {
-            vocabList.filter(v => v.cat === cat).forEach(i => { if(!state.selectedItems.some(s=>s.id===i.id)) { state.selectedItems.push(i); document.getElementById(`card-${i.id}`)?.classList.add('selected-card'); } });
-            document.getElementById('nextBtn').innerText = `下一步 (${state.selectedItems.length})`;
+            if(idx > -1) state.selectedItems.splice(idx, 1);
+            else state.selectedItems.push(vocabList.find(v => v.id === id));
+            updateView();
         }
 
         function toggleStar(id) {
             const idx = state.starredIds.indexOf(id);
             if(idx > -1) state.starredIds.splice(idx, 1);
             else state.starredIds.push(id);
-            renderPrep(document.getElementById('app'));
+            updateView();
         }
 
         let gameTimer;
         function startGame() {
-            if(state.selectedItems.length === 0) return alert('請先選擇圖片');
-            state.currentRound = 0;
-            state.rounds = [];
-            generateRounds();
-            state.view = 'GAME';
-            startRound();
+            state.currentRound = 0; state.rounds = []; generateRounds();
+            state.view = 'GAME'; state.isFinishing = false; startRound();
         }
 
         function generateRounds() {
@@ -638,13 +602,12 @@
         }
 
         function startRound() {
-            state.timeLeft = state.duration;
-            state.isPaused = false;
+            state.timeLeft = state.duration; state.isPaused = false;
             updateView();
             if(state.showTimer) {
                 clearInterval(gameTimer);
                 gameTimer = setInterval(() => {
-                    if(state.isPaused) return;
+                    if(state.isPaused || state.isFinishing) return;
                     state.timeLeft = (state.timeLeft - 0.1).toFixed(1);
                     if(state.timeLeft <= 0) { state.timeLeft = 0; endRound(false); }
                     updateTimerUI();
@@ -653,7 +616,7 @@
         }
 
         function tickCard(index) {
-            if(state.isPaused) return;
+            if(state.isPaused || state.isFinishing) return;
             const round = state.rounds[state.currentRound];
             if(!round.tickedIndexes.includes(index)) {
                 round.tickedIndexes.push(index);
@@ -671,8 +634,21 @@
             setTimeout(() => {
                 state.currentRound++;
                 if(state.currentRound < 10) startRound();
-                else finishGame();
-            }, 800);
+                else finishGameSequence();
+            }, 600);
+        }
+
+        function finishGameSequence() {
+            state.isFinishing = true;
+            updateView(); // Show final 10/10 state
+            sounds.finish.play();
+            triggerConfetti();
+            
+            // Stay on game stage for celebration, then go to summary
+            setTimeout(() => {
+                state.view = 'SUMMARY';
+                updateView();
+            }, 3500);
         }
 
         function updateTimerUI() {
@@ -684,24 +660,25 @@
             else { fill.style.width = (100-p) + "%"; mover.style.left = (100-p) + "%"; }
         }
 
-        function finishGame() {
-            state.view = 'SUMMARY';
-            updateView();
-            sounds.finish.play();
-            triggerConfetti();
-        }
-
         function triggerConfetti() {
             const canvas = document.getElementById('confetti-canvas'), ctx = canvas.getContext('2d');
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            let pieces = Array.from({length: 150}, () => ({
-                x: Math.random() * canvas.width, y: -20, r: 5 + Math.random() * 10,
-                color: `hsl(${Math.random() * 360}, 100%, 50%)`, v: 3 + Math.random() * 5
+            let pieces = Array.from({length: 80}, () => ({
+                x: Math.random() * canvas.width, y: -20, 
+                w: 10 + Math.random() * 15, h: 5 + Math.random() * 10,
+                color: `hsl(${Math.random() * 360}, 80%, 50%)`,
+                v: 3 + Math.random() * 4, r: Math.random() * Math.PI, rs: Math.random() * 0.1
             }));
             function draw() {
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                pieces.forEach(p => { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); p.y += p.v; });
-                if(pieces[0].y < canvas.height) requestAnimationFrame(draw);
+                pieces.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y); ctx.rotate(p.r);
+                    ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+                    ctx.restore();
+                    p.y += p.v; p.r += p.rs;
+                });
+                if(pieces[0].y < canvas.height + 100) requestAnimationFrame(draw);
             }
             draw();
         }
@@ -709,12 +686,8 @@
         function handleSizeChange(val) { document.documentElement.style.setProperty('--card-width', val + 'px'); }
 
         async function exportResult() {
-            const target = document.getElementById('reportCard') || document.getElementById('app');
-            const canvas = await html2canvas(target, { 
-                scale: 2, useCORS: true, 
-                windowWidth: target.scrollWidth, 
-                windowHeight: target.scrollHeight 
-            });
+            const target = document.getElementById('reportCard') || document.body;
+            const canvas = await html2canvas(target, { scale: 2, useCORS: true, windowHeight: target.scrollHeight });
             const link = document.createElement('a'); link.download = '快速命名紀錄.png'; link.href = canvas.toDataURL(); link.click();
         }
 
