@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>快速命名遊戲</title>
+    <title>快速命名遊戲2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -39,16 +39,21 @@
         .game-card.ticked .tick-overlay { display: block; }
 
         .reward-track-box { background: rgba(255,255,255,0.85); border: 4px solid #bae6fd; padding: 12px; border-radius: 25px; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-        .reward-slot { width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 38px; border-radius: 15px; background: rgba(0,0,0,0.05); border: 2px dashed #cbd5e1; }
+        .reward-slot { width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 38px; border-radius: 15px; background: rgba(0,0,0,0.05); border: 2px dashed #cbd5e1; line-height: 1; }
         .reward-slot.earned { background: white; border-style: solid; border-color: #fbbf24; box-shadow: 0 3px 0 #d97706; }
         .reward-slot.failed { background: #e2e8f0; filter: grayscale(1); border-style: solid; border-color: #94a3b8; opacity: 0.6; }
 
         .timer-container { width: 100%; max-width: 600px; position: relative; padding: 30px 0; }
-        .timer-track { height: 30px; width: 100%; border-radius: 999px; border: 5px solid white; background: rgba(0,0,0,0.1); }
+        .timer-track { height: 30px; width: 100%; border-radius: 999px; border: 5px solid white; background: rgba(0,0,0,0.1); position: relative; }
         .timer-fill { height: 100%; border-radius: 999px; transition: width 0.1s linear; }
-        .mover-emoji { position: absolute; top: -35px; font-size: 75px; z-index: 30; transform: translateX(-50%); transition: left 0.1s linear; }
+        .mover-emoji { position: absolute; top: -35px; font-size: 75px; z-index: 30; transform: translateX(-50%); transition: left 0.1s linear; line-height: 1; }
+        .goal-emoji { position: absolute; top: -25px; font-size: 55px; z-index: 25; transform: translateX(-50%); line-height: 1; }
 
         .hide-text p { display: none !important; }
+
+        /* Fix for html2canvas alignment */
+        #reportCard * { line-height: 1.2; vertical-align: middle; }
+        .export-emoji { display: inline-block; line-height: 1; vertical-align: middle; }
     </style>
 </head>
 <body class="bg-park">
@@ -352,7 +357,8 @@
         const sounds = { 
             tick: new Audio('sounds/star.mp3'), 
             finish: new Audio('sounds/hooray.mp3'), 
-            ding: new Audio('sounds/Ding.wav') 
+            ding: new Audio('sounds/Ding.wav'),
+            untick: new Audio('sounds/pop.mp3') // Added for untick feedback
         };
 
         function updateView() {
@@ -468,7 +474,6 @@
         }
 
         function renderGame(app) {
-            // Bug Fix: Clamp the index so it doesn't crash during the celebration phase
             const roundIdx = Math.min(state.currentRound, 9);
             const round = state.rounds[roundIdx];
             const cardWidthPercent = (100 / state.cardsPerRound) - 2;
@@ -489,8 +494,11 @@
                             <button onclick="state.isPaused = !state.isPaused; this.innerText=state.isPaused?'繼續 ▶️':'暫停 ⏸'" class="px-6 py-1 btn-blue btn-active rounded-full font-bold">暫停 ⏸</button>
                         </div>
                         <div class="timer-container">
-                            <div class="timer-track"><div id="tFill" class="timer-fill ${state.timerType==='bomb'?'bg-orange-500':'bg-sky-500'}" style="width:100%"></div></div>
-                            <div id="tMover" class="mover-emoji" style="left:100%">${state.timerType==='bomb'?'💣':'🏎️'}</div>
+                            <div class="timer-track">
+                                <div id="goalEmoji" class="goal-emoji">${state.timerType==='bomb'?'🔥':'🏁'}</div>
+                                <div id="tFill" class="timer-fill ${state.timerType==='bomb'?'bg-orange-500':'bg-sky-500'}" style="width:100%"></div>
+                            </div>
+                            <div id="tMover" class="mover-emoji">${state.timerType==='bomb'?'💣':'🏎️'}</div>
                         </div>` : ''}
                     </div>
 
@@ -533,7 +541,7 @@
                         <div>
                             <h2 class="text-5xl font-black text-sky-900">快速命名總結</h2>
                             <div class="reward-track-box flex gap-2 mt-4 scale-90 origin-left">
-                                ${state.rounds.map(r => `<div class="reward-slot ${r.success?'earned':'failed'}">${state.rewardEmoji}</div>`).join('')}
+                                ${state.rounds.map(r => `<div class="reward-slot ${r.success?'earned':'failed'}"><span class="export-emoji">${state.rewardEmoji}</span></div>`).join('')}
                             </div>
                         </div>
                         <div class="text-right">
@@ -620,11 +628,21 @@
         function tickCard(index) {
             if(state.isPaused || state.isFinishing) return;
             const round = state.rounds[state.currentRound];
-            if(!round.tickedIndexes.includes(index)) {
+            
+            const existingIdx = round.tickedIndexes.indexOf(index);
+            if(existingIdx > -1) {
+                // UN-TICK
+                round.tickedIndexes.splice(existingIdx, 1);
+                document.getElementById(`game-card-${index}`).classList.remove('ticked');
+                if(sounds.untick) { sounds.untick.currentTime = 0; sounds.untick.play(); }
+            } else {
+                // TICK
                 round.tickedIndexes.push(index);
                 document.getElementById(`game-card-${index}`).classList.add('ticked');
                 sounds.tick.currentTime = 0; sounds.tick.play();
-                if(round.tickedIndexes.length === round.displayedIds.length) endRound(true);
+                if(round.tickedIndexes.length === round.displayedIds.length) {
+                    setTimeout(() => { if(round.tickedIndexes.length === round.displayedIds.length) endRound(true); }, 300);
+                }
             }
         }
 
@@ -639,7 +657,6 @@
                     startRound();
                 }, 600);
             } else {
-                // Trigger finish immediately for the 10th round
                 finishGameSequence();
             }
         }
@@ -647,37 +664,47 @@
         function finishGameSequence() {
             state.isFinishing = true;
             updateView(); 
-            
-            // Trigger celebration
             sounds.finish.play();
-            confetti({
-                particleCount: 200,
-                spread: 80,
-                origin: { y: 0.6 },
-                zIndex: 200
-            });
-            
-            // Bug Fix: Clear logic and move to summary after 3 seconds
-            setTimeout(() => {
-                state.view = 'SUMMARY';
-                updateView();
-            }, 3000);
+            confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 }, zIndex: 200 });
+            setTimeout(() => { state.view = 'SUMMARY'; updateView(); }, 3000);
         }
 
         function updateTimerUI() {
-            const fill = document.getElementById('tFill'), mover = document.getElementById('tMover'), txt = document.getElementById('timerTxt');
-            if(!fill) return;
+            const fill = document.getElementById('tFill'), mover = document.getElementById('tMover'), goal = document.getElementById('goalEmoji'), txt = document.getElementById('timerTxt');
+            if(!fill || !mover) return;
+            
             const p = (state.timeLeft / state.duration) * 100;
             txt.innerText = Math.ceil(state.timeLeft) + "s";
-            if(state.timerType === 'bomb') { fill.style.width = p + "%"; mover.style.left = p + "%"; }
-            else { fill.style.width = (100-p) + "%"; mover.style.left = (100-p) + "%"; }
+
+            if(state.timerType === 'bomb') {
+                // BOMB: Moves Right to Left towards Fire (at 0%)
+                goal.style.left = "0%";
+                fill.style.width = p + "%";
+                fill.style.float = "right"; // Visual bar shrinks from right
+                mover.style.left = p + "%";
+            } else {
+                // CAR: Moves Left to Right towards Finish Line (at 100%)
+                goal.style.left = "100%";
+                fill.style.width = (100-p) + "%";
+                fill.style.float = "left";
+                mover.style.left = (100-p) + "%";
+            }
         }
 
         function handleSizeChange(val) { document.documentElement.style.setProperty('--card-width', val + 'px'); }
 
         async function exportResult() {
             const target = document.getElementById('reportCard') || document.body;
-            const canvas = await html2canvas(target, { scale: 2, useCORS: true, windowHeight: target.scrollHeight });
+            // Force line-height and alignment before capture
+            const canvas = await html2canvas(target, { 
+                scale: 2, 
+                useCORS: true, 
+                windowHeight: target.scrollHeight,
+                backgroundColor: "#ffffff",
+                onclone: (clonedDoc) => {
+                    // Small delay/style fix inside clone if needed
+                }
+            });
             const link = document.createElement('a'); link.download = '快速命名紀錄.png'; link.href = canvas.toDataURL(); link.click();
         }
 
