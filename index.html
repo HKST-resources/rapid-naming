@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>快速命名遊戲2</title>
+    <title>快速命名練習 - 專業版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -14,7 +14,7 @@
             --orange-main: #EA580C; 
             --card-width: 110px;
         }
-        body { font-family: "PingFang HK", "Heiti TC", sans-serif; overflow-x: hidden; user-select: none; transition: background 0.3s; }
+        body { font-family: "PingFang HK", "Heiti TC", "Microsoft JhengHei", sans-serif; overflow-x: hidden; user-select: none; transition: background 0.3s; }
         
         .bg-park { background: url('images/park.jpg') center/cover fixed; }
         .bg-room { background: url('images/room.jpg') center/cover fixed; }
@@ -38,11 +38,21 @@
         .tick-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; display: none; pointer-events: none; z-index: 20; }
         .game-card.ticked .tick-overlay { display: block; }
 
-        .reward-track-box { background: rgba(255,255,255,0.85); border: 4px solid #bae6fd; padding: 12px; border-radius: 25px; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-        .reward-slot { width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 38px; border-radius: 15px; background: rgba(0,0,0,0.05); border: 2px dashed #cbd5e1; line-height: 1; }
+        /* Summary & Export Fixes */
+        .reward-track-box { background: rgba(255,255,255,0.85); border: 4px solid #bae6fd; padding: 12px; border-radius: 25px; box-shadow: 0 8px 15px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
+        .reward-slot { 
+            width: 55px; height: 55px; 
+            display: inline-flex; align-items: center; justify-content: center; 
+            font-size: 38px; border-radius: 15px; 
+            background: rgba(0,0,0,0.05); border: 2px dashed #cbd5e1; 
+            line-height: 1; overflow: hidden;
+        }
         .reward-slot.earned { background: white; border-style: solid; border-color: #fbbf24; box-shadow: 0 3px 0 #d97706; }
         .reward-slot.failed { background: #e2e8f0; filter: grayscale(1); border-style: solid; border-color: #94a3b8; opacity: 0.6; }
 
+        .export-emoji { display: inline-block; line-height: 1; vertical-align: middle; }
+
+        /* Timer Styles */
         .timer-container { width: 100%; max-width: 600px; position: relative; padding: 30px 0; }
         .timer-track { height: 30px; width: 100%; border-radius: 999px; border: 5px solid white; background: rgba(0,0,0,0.1); position: relative; }
         .timer-fill { height: 100%; border-radius: 999px; transition: width 0.1s linear; }
@@ -50,10 +60,6 @@
         .goal-emoji { position: absolute; top: -25px; font-size: 55px; z-index: 25; transform: translateX(-50%); line-height: 1; }
 
         .hide-text p { display: none !important; }
-
-        /* Fix for html2canvas alignment */
-        #reportCard * { line-height: 1.2; vertical-align: middle; }
-        .export-emoji { display: inline-block; line-height: 1; vertical-align: middle; }
     </style>
 </head>
 <body class="bg-park">
@@ -358,7 +364,7 @@
             tick: new Audio('sounds/star.mp3'), 
             finish: new Audio('sounds/hooray.mp3'), 
             ding: new Audio('sounds/Ding.wav'),
-            untick: new Audio('sounds/pop.mp3') // Added for untick feedback
+            untick: new Audio('sounds/pop.mp3')
         };
 
         function updateView() {
@@ -485,7 +491,7 @@
                             ${Array.from({length: 10}).map((_, i) => {
                                 let status = i < state.currentRound ? (state.rounds[i].success ? 'earned' : 'failed') : '';
                                 if(state.isFinishing && i === 9) status = state.rounds[9].success ? 'earned' : 'failed';
-                                return `<div class="reward-slot ${status}">${status ? state.rewardEmoji : ''}</div>`;
+                                return `<div class="reward-slot ${status}">${status ? `<span class="export-emoji">${state.rewardEmoji}</span>` : ''}</div>`;
                             }).join('')}
                         </div>
                         ${state.showTimer ? `
@@ -537,15 +543,15 @@
 
             app.innerHTML = `
                 <div id="reportCard" class="bg-white p-12 rounded-[60px] shadow-2xl max-w-6xl mx-auto border-[15px] border-sky-50">
-                    <div class="flex justify-between items-center border-b-8 border-sky-50 pb-8 mb-8">
+                    <div class="flex justify-between items-baseline border-b-8 border-sky-50 pb-8 mb-8">
                         <div>
-                            <h2 class="text-5xl font-black text-sky-900">快速命名總結</h2>
+                            <h2 class="text-5xl font-black text-sky-900" style="line-height:1.2">快速命名總結</h2>
                             <div class="reward-track-box flex gap-2 mt-4 scale-90 origin-left">
                                 ${state.rounds.map(r => `<div class="reward-slot ${r.success?'earned':'failed'}"><span class="export-emoji">${state.rewardEmoji}</span></div>`).join('')}
                             </div>
                         </div>
                         <div class="text-right">
-                             <div class="text-2xl font-bold text-gray-400">${state.showTimer ? state.duration + 's 限制' : '不限時'}</div>
+                             <div class="text-2xl font-bold text-gray-400">🕒 ${state.showTimer ? state.duration + 's 限制' : '不限時'}</div>
                              <div class="text-4xl font-black text-emerald-600">成功：${state.rounds.filter(r => r.success).length} / 10</div>
                         </div>
                     </div>
@@ -628,15 +634,12 @@
         function tickCard(index) {
             if(state.isPaused || state.isFinishing) return;
             const round = state.rounds[state.currentRound];
-            
             const existingIdx = round.tickedIndexes.indexOf(index);
             if(existingIdx > -1) {
-                // UN-TICK
                 round.tickedIndexes.splice(existingIdx, 1);
                 document.getElementById(`game-card-${index}`).classList.remove('ticked');
-                if(sounds.untick) { sounds.untick.currentTime = 0; sounds.untick.play(); }
+                sounds.untick.currentTime = 0; sounds.untick.play();
             } else {
-                // TICK
                 round.tickedIndexes.push(index);
                 document.getElementById(`game-card-${index}`).classList.add('ticked');
                 sounds.tick.currentTime = 0; sounds.tick.play();
@@ -650,12 +653,8 @@
             clearInterval(gameTimer);
             state.rounds[state.currentRound].success = success;
             if(!success) sounds.ding.play();
-            
             if(state.currentRound < 9) {
-                setTimeout(() => {
-                    state.currentRound++;
-                    startRound();
-                }, 600);
+                setTimeout(() => { state.currentRound++; startRound(); }, 600);
             } else {
                 finishGameSequence();
             }
@@ -672,22 +671,12 @@
         function updateTimerUI() {
             const fill = document.getElementById('tFill'), mover = document.getElementById('tMover'), goal = document.getElementById('goalEmoji'), txt = document.getElementById('timerTxt');
             if(!fill || !mover) return;
-            
             const p = (state.timeLeft / state.duration) * 100;
             txt.innerText = Math.ceil(state.timeLeft) + "s";
-
             if(state.timerType === 'bomb') {
-                // BOMB: Moves Right to Left towards Fire (at 0%)
-                goal.style.left = "0%";
-                fill.style.width = p + "%";
-                fill.style.float = "right"; // Visual bar shrinks from right
-                mover.style.left = p + "%";
+                goal.style.left = "0%"; fill.style.width = p + "%"; fill.style.float = "right"; mover.style.left = p + "%";
             } else {
-                // CAR: Moves Left to Right towards Finish Line (at 100%)
-                goal.style.left = "100%";
-                fill.style.width = (100-p) + "%";
-                fill.style.float = "left";
-                mover.style.left = (100-p) + "%";
+                goal.style.left = "100%"; fill.style.width = (100-p) + "%"; fill.style.float = "left"; mover.style.left = (100-p) + "%";
             }
         }
 
@@ -695,17 +684,30 @@
 
         async function exportResult() {
             const target = document.getElementById('reportCard') || document.body;
-            // Force line-height and alignment before capture
             const canvas = await html2canvas(target, { 
-                scale: 2, 
+                scale: 3, 
                 useCORS: true, 
-                windowHeight: target.scrollHeight,
                 backgroundColor: "#ffffff",
                 onclone: (clonedDoc) => {
-                    // Small delay/style fix inside clone if needed
+                    // This is the CRITICAL FIX for the dropped emojis
+                    const emojis = clonedDoc.querySelectorAll('.export-emoji');
+                    emojis.forEach(el => {
+                        el.style.display = 'inline-block';
+                        el.style.transform = 'translateY(-12%)'; // Manual nudge up for the canvas render
+                        el.style.lineHeight = '1';
+                    });
+                    const slots = clonedDoc.querySelectorAll('.reward-slot');
+                    slots.forEach(s => {
+                        s.style.display = 'flex';
+                        s.style.alignItems = 'center';
+                        s.style.justifyContent = 'center';
+                    });
                 }
             });
-            const link = document.createElement('a'); link.download = '快速命名紀錄.png'; link.href = canvas.toDataURL(); link.click();
+            const link = document.createElement('a'); 
+            link.download = `快速命名練習_${new Date().toLocaleDateString()}.png`; 
+            link.href = canvas.toDataURL('image/png'); 
+            link.click();
         }
 
         updateView();
